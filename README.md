@@ -1,4 +1,4 @@
-# Yehia SQL Generator
+# Query SQL Generator
 
 This repository contains a web application that utilizes the [Vanna AI library](https://vanna.ai/docs/) to generate SQL queries from natural language input, specifically tailored for Oracle databases. The application offers a user-friendly interface where users can input questions in plain English, receive Oracle-compliant SQL queries, execute them against a database, and export the results. It is designed to simplify SQL query creation for both technical and non-technical users working with Oracle databases.
 
