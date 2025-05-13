@@ -1,0 +1,27 @@
+body {
+  transition: background-color 0.3s, color 0.3s;
+}
+
+textarea, input[type="text"] {
+  font-family: 'Fira Code', monospace;
+  font-size: 0.95rem;
+}
+
+code {
+  font-family: 'Fira Code', monospace;
+  font-size: 0.85rem;
+  background-color: rgba(0,0,0,0.05);
+  padding: 0.25rem 0.5rem;
+  border-radius: 4px;
+  display: inline-block;
+  margin-top: 0.25rem;
+}
+
+.list-group-item {
+  background-color: var(--bs-body-bg);
+  border-color: var(--bs-border-color-translucent);
+}
+
+textarea.form-control {
+  resize: vertical;
+}
