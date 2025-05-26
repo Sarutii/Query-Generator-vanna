@@ -1,141 +1,134 @@
-"""
-Script to train Vanna on Oracle schema files and save the trained model.
-Run this script separately before starting the main application.
-"""
-
-from vanna.ollama import Ollama
-from vanna.chromadb import ChromaDB_VectorStore
-import json
+import os
 import sys
 import time
+import shutil
+from vanna.ollama import Ollama
+from vanna.chromadb import ChromaDB_VectorStore
 
 class MyVanna(ChromaDB_VectorStore, Ollama):
+    """
+    A simplified Vanna implementation that works with latest Vanna versions
+    """
+    
     def __init__(self, config=None):
+        # Initialize with minimal configuration
         config = config or {}
         config['model'] = 'mistral'
         config['persist_directory'] = './vanna-data'
         ChromaDB_VectorStore.__init__(self, config=config)
         Ollama.__init__(self, config=config)
-        self.prompt_prefix = ""
-
-    def set_prompt_prefix(self, prompt:str):
-        self.prompt_prefix = prompt
-
-    def get_prompt_prefix(self)-> str:
-        return self.prompt_prefix
+        # Removed: self.vector_store = ChromaDB_VectorStore(config=config)
     
-    def generate_sql(self, question: str) -> str:
-        full_prompt = f"{self.prompt_prefix}\nQuestion: {question}"
-        return super().generate_sql(full_prompt)
+    # Required abstract method implementations
+    def system_message(self, message):
+        return Ollama.system_message(self, message) if hasattr(Ollama, 'system_message') else None
+    
+    def user_message(self, message):
+        return Ollama.user_message(self, message) if hasattr(Ollama, 'user_message') else None
+    
+    def assistant_message(self, message):
+        return Ollama.assistant_message(self, message) if hasattr(Ollama, 'assistant_message') else None
+    
+    def submit_prompt(self, prompt):
+        return Ollama.generate(self, prompt) if hasattr(Ollama, 'generate') else None
+    
+    def train(self, documentation=None, sql=None):
+        """Train on documentation or SQL"""
+        if documentation:
+            print(f"Training on documentation ({len(documentation)} chars)")
+            self.add_documentation(documentation)  # Use inherited method from ChromaDB_VectorStore
+        if sql:
+            print(f"Training on SQL ({len(sql)} chars)")
+            self.add_sql(sql)  # Use inherited method from ChromaDB_VectorStore
+    
+    def generate_sql(self, question):
+        """Generate SQL for the given question"""
+        # Get relevant documentation context
+        context = self.get_context(question)  # Use self instead of self.vector_store
+        context_str = "\n\n".join(context)
+        
+        # Construct prompt
+        prompt = f"{self.prompt_prefix}\n\nSchema information:\n{context_str}\n\nQuestion: {question}\n\nSQL:"
+        
+        # Generate SQL
+        return self.submit_prompt(prompt)
 
-def train_vanna_on_schema_files(sql_schema_file):
-                                # , json_schema_file):
+# Removed global instantiation here to avoid issues during import
+# vn = MyVanna(config={'model': 'mistral'})
+
+def train_vanna_on_text_file(training_text_file):
     """
-    Train Vanna on SQL schema file and JSON schema file
+    Train Vanna on the generated training text file,
+    deleting any previous training data first
     
     Args:
-        sql_schema_file (str): Path to SQL schema file
-        json_schema_file (str): Path to JSON schema file with relationships
+        training_text_file (str): Path to the training text file
     """
-    print("Starting Vanna training on schema files...")
+    print("Starting fresh Vanna training on text file...")
     start_time = time.time()
     
-    # Initialize Vanna
-    vn = MyVanna()
+    # Delete previous training data if it exists
+    persist_directory = './vanna-data'
+    if os.path.exists(persist_directory):
+        print(f"Deleting previous training data at {persist_directory}...")
+        shutil.rmtree(persist_directory)
+        print("Previous training data deleted successfully.")
     
-    # Step 1: Read the SQL schema file
+    # Create a fresh directory
+    os.makedirs(persist_directory, exist_ok=True)
+    
+    # Initialize Vanna
     try:
-        with open(sql_schema_file, 'r') as f:
-            sql_schema = f.read()
-            
-        print(f"Successfully read SQL schema file: {sql_schema_file}")
-        print(f"SQL schema size: {len(sql_schema)} characters")
-        
-        # Train Vanna on SQL schema
-        vn.train(sql=sql_schema)
-        print("Successfully trained Vanna on SQL schema")
-        
+        vn = MyVanna()
+        print("Successfully created MyVanna instance")
     except Exception as e:
-        print(f"Error reading or training on SQL schema file: {e}")
+        print(f"Failed to create MyVanna instance: {e}")
         return False
     
-    # Step 2: Read and process the JSON schema file with relationships
-    # try:
-    #     with open(json_schema_file, 'r') as f:
-    #         json_schema = json.load(f)
+    # Read the training text file
+    try:
+        with open(training_text_file, 'r', encoding='utf-8') as f:
+            training_text = f.read()
             
-    #     print(f"Successfully read JSON schema file: {json_schema_file}")
+        print(f"Successfully read training text file: {training_text_file}")
+        print(f"Training text size: {len(training_text)} characters")
         
-    #     # Extract and format table documentation from JSON
-    #     table_docs = []
-    #     table_names = []
+        # Split the training text into individual table documentation chunks
+        table_docs = training_text.split("-" * 60)
+        table_docs = [doc.strip() for doc in table_docs if doc.strip()]
         
-    #     # Process tables and their columns
-    #     if 'tables' in json_schema:
-    #         for table in json_schema['tables']:
-    #             table_name = table.get('table_name', '')
-    #             table_names.append(table_name)
-    #             table_comment = table.get('comment', 'No description available')
-                
-    #             doc = f"Table: {table_name}\nDescription: {table_comment}\n"
-                
-    #             # Add columns information
-    #             if 'columns' in table and table['columns']:
-    #                 doc += "Columns:\n"
-    #                 for column in table['columns']:
-    #                     col_name = column.get('column_name', '')
-    #                     col_type = column.get('data_type', '')
-    #                     col_comment = column.get('comment', 'No description')
-    #                     nullable = "NOT NULL" if not column.get('nullable', True) else "NULL"
-                        
-    #                     doc += f"- {col_name} ({col_type}, {nullable}): {col_comment}\n"
-                
-    #             table_docs.append(doc)
+        print(f"Found {len(table_docs)} table documentation chunks")
         
-        # # Process relationships if available
-        # if 'relationships' in json_schema:
-        #     relationships_doc = "Table Relationships:\n"
-        #     for rel in json_schema['relationships']:
-        #         from_table = rel.get('from_table', '')
-        #         from_column = rel.get('from_column', '')
-        #         to_table = rel.get('to_table', '')
-        #         to_column = rel.get('to_column', '')
-        #         rel_type = rel.get('type', 'FK')
-                
-        #         relationships_doc += f"- {from_table}.{from_column} -> {to_table}.{to_column} ({rel_type})\n"
-            
-        #     table_docs.append(relationships_doc)
+        # Train Vanna on each table documentation chunk
+        for i, doc in enumerate(table_docs):
+            try:
+                vn.train(documentation=doc)
+                if i % 10 == 0 or i == len(table_docs) - 1:
+                    print(f"Trained on {i+1}/{len(table_docs)} table documentation chunks")
+            except Exception as e:
+                print(f"Error training on chunk {i+1}: {e}")
+                print(f"First 100 chars of problematic chunk: {doc[:100]}")
+                continue
         
-        # # Train Vanna on each table documentation
-        # for doc in table_docs:
-        #     vn.train(documentation=doc)
-        #     print(f"Trained on table documentation (first 100 chars):\n{doc[:100]}...")
+        print("Successfully trained Vanna on all table documentation")
         
-        # print("Successfully trained Vanna on JSON schema relationships")
-        
-        # # Save the list of table names for the main application to use
-        # with open('schema_tables.json', 'w') as f:
-        #     json.dump({"tables": table_names}, f)
-        # print(f"Saved table names to schema_tables.json")
-        
-    # except Exception as e:
-    #     print(f"Error reading or training on JSON schema file: {e}")
-    #     return False
+    except Exception as e:
+        print(f"Error reading or training on text file: {e}")
+        return False
     
     end_time = time.time()
-    print(f"Schema training completed successfully in {end_time - start_time:.2f} seconds!")
+    print(f"Training completed successfully in {end_time - start_time:.2f} seconds!")
     return True
 
 if __name__ == "__main__":
-    # if len(sys.argv) < 3:
-    #     print("Usage: python train_vanna.py <path_to_schema.sql> <path_to_schema_relationships.json>")
-    #     sys.exit(1)
+    if len(sys.argv) < 2:
+        # Default to the generated training text file if no argument is provided
+        training_text_file = r"C:\Users\ahmed\Desktop\Projects\Query Generator\Vanna_app\Query-Generator-vanna\Full Data Discrebtion.txt"
+        print(f"No file specified, using default: {training_text_file}")
+    else:
+        training_text_file = sys.argv[1]
     
-    sql_schema_file = r"C:\Users\ahmed\Desktop\Projects\Query Generator\Vanna_app\Table_Column_Comment.sql"
-    # json_schema_file = r"C:\Users\ahmed\Desktop\Projects\Query Generator\oracle_schema_20250415_054319.json"
-    
-    if train_vanna_on_schema_files(sql_schema_file):
-                                #    , json_schema_file):
+    if train_vanna_on_text_file(training_text_file):
         print("Training complete! You can now run the main application.")
     else:
         print("Training failed. Please check the error messages above.")
