@@ -15,7 +15,7 @@ logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(
 class MyVanna(ChromaDB_VectorStore, Ollama):
     def __init__(self, config=None):
         config = config or {}
-        config['model'] = 'mistral'
+        config['model'] = 'deepseek-r1:7b'
         config['persist_directory'] = './vanna-data'
         ChromaDB_VectorStore.__init__(self, config=config)
         Ollama.__init__(self, config=config)
