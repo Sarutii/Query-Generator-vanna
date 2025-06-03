@@ -13,6 +13,7 @@ import numpy as np
 from typing import List, Dict, Any, Tuple, Optional
 from vanna.ollama import Ollama
 from vanna.chromadb import ChromaDB_VectorStore
+from sentence_transformers import SentenceTransformer
 
 # Set up logging
 logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')

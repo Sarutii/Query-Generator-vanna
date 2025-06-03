@@ -233,15 +233,15 @@ class MyVanna(ChromaDB_VectorStore, Ollama):
                 context_parts.append(ddl.strip())
                 context_parts.append("")
         
-        # Get similar questions/examples (more examples)
-        similar_questions = self.get_similar_questions(question, n_results=5)
-        if similar_questions:
-            context_parts.append("=== SIMILAR QUERY EXAMPLES ===")
-            for i, (q, sql) in enumerate(similar_questions, 1):
-                context_parts.append(f"Example {i}:")
-                context_parts.append(f"Question: {q}")
-                context_parts.append(f"SQL: {sql}")
-                context_parts.append("")
+        # # Get similar questions/examples (more examples)
+        # similar_questions = self.get_similar_questions(question, n_results=5)
+        # if similar_questions:
+        #     context_parts.append("=== SIMILAR QUERY EXAMPLES ===")
+        #     for i, (q, sql) in enumerate(similar_questions, 1):
+        #         context_parts.append(f"Example {i}:")
+        #         context_parts.append(f"Question: {q}")
+        #         context_parts.append(f"SQL: {sql}")
+        #         context_parts.append("")
         
         # Get documentation (more comprehensive)
         docs = self.get_related_documentation(question, n_results=5)

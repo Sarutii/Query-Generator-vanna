@@ -1,0 +1,170 @@
+TABLE: ACCOUNT
+DESCRIPTION: عرض حسب رقم المركز - View according to the center number
+COLUMNS:
+  - A_CODE (VARCHAR2, NOT NULL) [PK] | رقم الحساب - Account number
+  - A_NAME (VARCHAR2, NOT NULL) | اسم الحساب - account name
+  - A_NAME_ENG (VARCHAR2, NULL) | الاسم الأجنبي - Foreign name
+  - A_LEVEL (NUMBER, NOT NULL) | الرتبه - Jurisprudence
+  - A_PARENT (VARCHAR2, NOT NULL) | الحساب الرئيسي - The main account
+  - A_S_M (NUMBER, NOT NULL) | النوع - Gender
+  - A_GROUPING (NUMBER, NULL) | مجموعات الحسابات - Account groups
+  - A_REPORT (NUMBER, NOT NULL) | نوع التقرير - Report
+  - A_ANALYSIS (NUMBER, NULL) | تحليل الحساب - Account analysis
+  - CLASS_NO (NUMBER, NULL) | تصنيف الحساب - Account classification
+  - AC_CLOSE (NUMBER, NULL) DEFAULT:0 | موقف - position
+  - DR (NUMBER, NULL) | طبيعة الحسابات - The nature of accounts
+  - CURDIF_CODE (VARCHAR2, NULL) | حساب فروق العملة - Calculating currency differences
+  - USE_CC (NUMBER, NULL) | إستخدام المراكز - Use of centers
+  - USE_PJ (NUMBER, NULL) | إستخدام المشاريع - Project use
+  - CONN_PRD (NUMBER, NULL) DEFAULT:0 | الربط مع نظام الإنتاج - Connecting with the production system
+  - FAV_AC (NUMBER, NULL) DEFAULT:0 | الحسابات المفضلة - Favorite accounts
+  - FLOW_TYPE (NUMBER, NULL) | نوع التدفق - The type of flow
+  - INACTIVE_RES (VARCHAR2, NULL) | سبب التوقيف - The reason for the arrest
+  - INACTIVE_DATE (DATE, NULL) | تاريخ التوقيف - Date of arrest
+  - CONF_LAST_DATE (DATE, NULL) | تاريخ آخر مطابقة - Another matching date
+  - AC_OP_NO (NUMBER, NULL) | nan - nan
+  - AC_EXP_TYPE (NUMBER, NULL) | طريقة التوزيع - Distribution method
+  - ADVNC_EXPNS_RVNU_FLG (NUMBER, NULL) DEFAULT:0 | نوع الحساب الإنتقالي - Type of transitional account
+  - USE_EXP_BRN (NUMBER, NULL) DEFAULT:0  | إستخدام المصاريف حسب الفرع - Using expenses according to the branch
+  - IMP_XLS (NUMBER, NULL) DEFAULT:0 | nan - nan
+  - AC_DTL_TYP (NUMBER, NULL) DEFAULT:0  | نوع الحساب التحليلي - Type of analytical account
+  - USE_ACTV (NUMBER, NULL) | nan - nan
+  - USE_TDS_FLG (NUMBER, NULL) DEFAULT:0 | إستخدام خصم الضريبة من المصدر - Using tax deduction from the source
+  - USE_INSRT_TYP (NUMBER, NULL) DEFAULT:0 | nan - nan
+  - AC_CODE_MNL (VARCHAR2, NULL) | nan - nan
+  - AD_U_ID (NUMBER, NULL) | مدخل السجل - Register entrance
+  - AD_DATE (DATE, NULL) | تاريخ الإدخال - Date of input
+  - UP_U_ID (NUMBER, NULL) | معدل السجل - Registry
+  - UP_DATE (DATE, NULL) | تاريخ أخر تعديل - Last update date
+  - UP_CNT (NUMBER, NULL) | مرات التعديل - Modification times
+  - PR_REP (NUMBER, NULL) | مرات الطباعة - Print times
+  - AD_TRMNL_NM (VARCHAR2, NULL) | الجهاز المدخل - The entrance device
+  - UP_TRMNL_NM (VARCHAR2, NULL) | الجهاز المعدل - The modified device
+PRIMARY_KEYS: A_CODE
+FOREIGN_KEYS:
+  - A_S_M → ACCOUNT_TYPES(ACCOUNT_TYPE)
+  - CLASS_NO → IAS_ACCOUNT_CLASS(CLASS_NO)
+  - A_GROUPING → ACCOUNT_GROUPING(GROUP_NO)
+  - A_REPORT → ACCOUNT_REPORT_TYPE(REPORT_TYPE)
+KEYWORDS: up_trmnl_nm, dr, use_tds_flg, advnc_expns_rvnu_flg, a_grouping, flow_type, a_level, ad_u_id, up_date, imp_xls, fav_ac, inactive_res, جدول, table, a_parent, use_actv, ac_dtl_typ, ac_close, a_code, pr_rep, conf_last_date, account, curdif_code, a_name, up_cnt, use_pj, conn_prd, a_analysis, use_insrt_typ, ac_code_mnl, ias_account_class, account_grouping, class_no, a_s_m, ac_op_no, ad_trmnl_nm, ac_exp_type, inactive_date, ad_date, up_u_id, use_cc, a_report, a_name_eng, account_types, account_report_type, use_exp_brn
+================================================================================
+TABLE: ACCOUNT_CURR
+DESCRIPTION: nan - nan
+COLUMNS:
+  - A_CODE (VARCHAR2, NOT NULL) [PK] | رقم الحساب - Account number
+  - A_CY (VARCHAR2, NOT NULL) [PK] | رمز العملة - Currency
+  - INACTIVE (NUMBER, NULL) DEFAULT:0 | توقيف - Arrest
+  - USED (NUMBER, NULL) DEFAULT:1 | nan - nan
+  - DFLT (NUMBER, NULL) DEFAULT:0 | الإفتراضي - Virtual
+  - AD_U_ID (NUMBER, NULL) | nan - nan
+  - AD_DATE (DATE, NULL) | تاريخ الإدخال - Date of input
+  - UP_U_ID (NUMBER, NULL) | معدل السجل - Registry
+  - UP_DATE (DATE, NULL) | تاريخ أخر تعديل - Last update date
+  - UP_CNT (NUMBER, NULL) | مرات التعديل - Modification times
+PRIMARY_KEYS: A_CODE, A_CY
+FOREIGN_KEYS:
+  - A_CY → EX_RATE(CUR_CODE)
+  - A_CODE → ACCOUNT(A_CODE)
+KEYWORDS: account_curr, a_code, ad_u_id, up_date, account, dflt, up_cnt, inactive, a_cy, جدول, table, ad_date, ex_rate, up_u_id, used
+================================================================================
+TABLE: ACCOUNT_GROUPING
+DESCRIPTION: مجموعة الحسابات - Account group
+COLUMNS:
+  - GROUP_NO (NUMBER, NOT NULL) [PK] | الرقم - Number
+  - GROUP_NAME (VARCHAR2, NOT NULL) | اسم المجموعة - Group name
+  - GROUP_E_NAME (VARCHAR2, NULL) | الاسم الأجنبي - Foreign name
+  - AD_U_ID (NUMBER, NULL) | مدخل السجل - Register entrance
+  - AD_DATE (DATE, NULL) | تاريخ الإدخال - Date of input
+  - UP_U_ID (NUMBER, NULL) | معدل السجل - Registry
+  - UP_DATE (DATE, NULL) | تاريخ أخر تعديل - Last update date
+  - UP_CNT (NUMBER, NULL) | مرات التعديل - Modification times
+  - PR_REP (NUMBER, NULL) | مرات الطباعة - Print times
+  - AD_TRMNL_NM (VARCHAR2, NULL) | الجهاز المدخل - The entrance device
+  - UP_TRMNL_NM (VARCHAR2, NULL) | الجهاز المعدل - The modified device
+PRIMARY_KEYS: GROUP_NO
+KEYWORDS: group_e_name, up_trmnl_nm, pr_rep, group_name, ad_u_id, up_date, ad_trmnl_nm, up_cnt, up_u_id, جدول, table, ad_date, group_no, account_grouping
+================================================================================
+TABLE: ACCOUNT_REPORT_TYPE
+DESCRIPTION: مجموعة الحسابات - Account group
+COLUMNS:
+  - REPORT_TYPE (NUMBER, NOT NULL) [PK] | الرقم - Number
+  - REPORT_NAME (VARCHAR2, NOT NULL) | اسم النوع - Type name
+  - REPORT_E_NAME (VARCHAR2, NULL) | الاسم الأجنبي - Foreign name
+  - REPORT_BS (NUMBER, NULL) DEFAULT:0 | الميزانية العموميه - Public budget
+  - AD_U_ID (NUMBER, NULL) | مدخل السجل - Register entrance
+  - AD_DATE (DATE, NULL) | تاريخ الإدخال - Date of input
+  - UP_U_ID (NUMBER, NULL) | معدل السجل - Registry
+  - UP_DATE (DATE, NULL) | تاريخ أخر تعديل - Last update date
+  - UP_CNT (NUMBER, NULL) | مرات التعديل - Modification times
+  - PR_REP (NUMBER, NULL) | مرات الطباعة - Print times
+  - AD_TRMNL_NM (VARCHAR2, NULL) | الجهاز المدخل - The entrance device
+  - UP_TRMNL_NM (VARCHAR2, NULL) | الجهاز المعدل - The modified device
+PRIMARY_KEYS: REPORT_TYPE
+KEYWORDS: report_name, up_trmnl_nm, report_e_name, pr_rep, report_bs, ad_u_id, report_type, up_date, ad_trmnl_nm, up_cnt, جدول, table, account_report_type, ad_date, up_u_id
+================================================================================
+TABLE: ACCOUNT_TYPES
+DESCRIPTION: أنواع الحسابات - Types of accounts
+COLUMNS:
+  - ACCOUNT_TYPE (NUMBER, NOT NULL) [PK] | الرقم - Number
+  - ACCOUNT_NAME (VARCHAR2, NOT NULL) | اسم النوع - Type name
+  - ACCOUNT_E_NAME (VARCHAR2, NULL) | الاسم الأجنبي - Foreign name
+  - AFFECTED_BY_TRANS (NUMBER, NULL) DEFAULT:0 | يتأثر بالعمليات - It is affected by the operations
+  - AD_U_ID (NUMBER, NULL) | مدخل السجل - Register entrance
+  - AD_DATE (DATE, NULL) | تاريخ الإدخال - Date of input
+  - UP_U_ID (NUMBER, NULL) | معدل السجل - Registry
+  - UP_DATE (DATE, NULL) | تاريخ أخر تعديل - Last update date
+  - UP_CNT (NUMBER, NULL) | مرات التعديل - Modification times
+  - PR_REP (NUMBER, NULL) | مرات الطباعة - Print times
+  - AD_TRMNL_NM (VARCHAR2, NULL) | الجهاز المدخل - The entrance device
+  - UP_TRMNL_NM (VARCHAR2, NULL) | الجهاز المعدل - The modified device
+PRIMARY_KEYS: ACCOUNT_TYPE
+KEYWORDS: account_type, account_e_name, up_trmnl_nm, pr_rep, ad_u_id, up_date, account_types, ad_trmnl_nm, affected_by_trans, up_cnt, account_name, جدول, table, ad_date, up_u_id
+================================================================================
+TABLE: ADDR_LST_DTL
+DESCRIPTION: دليل العناوين - Address guide
+COLUMNS:
+  - ADDR_CAT (NUMBER, NOT NULL) | nan - nan
+  - ADDR_TYP (NUMBER, NOT NULL) | nan - nan
+  - CID_CODE (VARCHAR2, NOT NULL) | كود العنوان - Address Code
+  - CID_SUB_CODE (NUMBER, NOT NULL) | الرمز الفرعي للعنوان - The sub -symbol of the title
+  - CID_CLMN_NM (VARCHAR2, NOT NULL) | اسم العمود - The name of the column
+  - CST_BR_CODE (VARCHAR2, NOT NULL) | كود المعرف له(الفرع-العميل-المورد-العميل النقدي) - Code identifier for him (branch-customer-supplier-cash customer)
+  - ADDR_STS (NUMBER, NOT NULL) DEFAULT:1                      | الحاله - the condition
+  - RCRD_SQ (NUMBER, NOT NULL) | تسلسل السجل - Record
+  - SYS_CLMN_VAL (VARCHAR2, NULL) | الرقم - Number
+  - CLMN_VAL (VARCHAR2, NULL) | الاسم المحلي - Local name
+  - CLMN_VAL_F (VARCHAR2, NULL) | الاسم الأجنبي - Foreign name
+  - RTRN_CLMN_VAL (VARCHAR2, NULL) | القيمة المردودة للعمود - The supplied value of the column
+  - UP_CNT (NUMBER, NULL) | مرات التعديل - Modification times
+KEYWORDS: cid_sub_code, addr_cat, clmn_val, addr_typ, cid_code, clmn_val_f, rcrd_sq, addr_sts, rtrn_clmn_val, up_cnt, جدول, table, cst_br_code, addr_lst_dtl, cid_clmn_nm, sys_clmn_val
+================================================================================
+TABLE: ALL_BRANCHES
+DESCRIPTION: الفروع المرتبطة - The associated branches
+COLUMNS:
+  - CMP_GRP (NUMBER, NULL) | nan - nan
+  - CMP_NO (NUMBER, NULL) | رقم الشركة - Company number
+  - BRN_NO (NUMBER, NULL) | رقم النشاط - Activity number
+  - BRN_YEAR (NUMBER, NOT NULL) [PK] | السنة - Sunnah
+  - BRN_USR (NUMBER, NOT NULL) [PK] | رقم النشاط - Activity number
+  - BRN_LNAME (VARCHAR2, NULL) | nan - nan
+  - BRN_FNAME (VARCHAR2, NULL) | nan - nan
+PRIMARY_KEYS: BRN_YEAR, BRN_USR
+KEYWORDS: brn_usr, brn_no, all_branches, cmp_no, cmp_grp, brn_lname, brn_year, جدول, table, brn_fname
+================================================================================
+TABLE: AMS_FUL_AST_CNSMPTN
+DESCRIPTION: جدول معدل إستهلاك الوقود - Fuel consumption schedule
+COLUMNS:
+  - AS_CODE (VARCHAR2, NOT NULL) [PK] | رقم الأصل - Original number
+  - FUL_MSUR_UNT (NUMBER, NOT NULL) | وحدة الوقود - Fuel
+  - RATE_CNSMPTN (NUMBER, NULL) | معدل الإستهلاك - Consumption
+  - AD_U_ID (NUMBER, NULL) | nan - nan
+  - AD_DATE (DATE, NULL) | تاريخ الإدخال - Date of input
+  - AD_TRMNL_NM (VARCHAR2, NULL) | اسم الجهاز - The name of the device
+  - PR_REP (NUMBER, NULL) | مرات الطباعة - Print times
+  - UP_U_ID (NUMBER, NULL) | معدل السجل - Registry
+  - UP_DATE (DATE, NULL) | تاريخ أخر تعديل - Last update date
+  - UP_TRMNL_NM (VARCHAR2, NULL) | nan - nan
+  - UP_CNT (NUMBER, NULL) | مرات التعديل - Modification times
+PRIMARY_KEYS: AS_CODE
+KEYWORDS: rate_cnsmptn, up_trmnl_nm, ful_msur_unt, pr_rep, ams_ful_ast_cnsmptn, ad_u_id, as_code, ad_trmnl_nm, up_date, up_cnt, جدول, table, ad_date, up_u_id
+================================================================================
