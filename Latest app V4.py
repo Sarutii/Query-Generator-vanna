@@ -9,22 +9,64 @@ import sqlparse
 import logging
 import uuid
 from datetime import datetime
+from chromadb.api.types import EmbeddingFunction
+from sentence_transformers import SentenceTransformer
+
+
+
+# Enhanced MyVanna class with proper vector similarity search
+import numpy as np
+from typing import List, Tuple, Dict, Any
 
 # Set up logging
 logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
 
-# Enhanced MyVanna class with proper vector similarity search
-import logging
-import numpy as np
-from typing import List, Tuple, Dict, Any
+class MultilingualEmbeddingFunction(EmbeddingFunction):
+    def __init__(self):
+        self.model = SentenceTransformer('paraphrase-multilingual-MiniLM-L12-v2')
+        logging.info(f"✅ Loaded multilingual embedding model: paraphrase-multilingual-MiniLM-L12-v2")
 
-class MyVanna(ChromaDB_VectorStore, Ollama):
-    def __init__(self, config=None):
-        config = config or {}
-        config['model'] = 'mistral'
-        config['persist_directory'] = './vanna-data'
-        ChromaDB_VectorStore.__init__(self, config=config)
-        Ollama.__init__(self, config=config)
+    def __call__(self, input: List[str]) -> List[List[float]]:
+        try:
+            if isinstance(input, str):
+                input = [input]
+            embeddings = self.model.encode(input, convert_to_numpy=True)
+            if embeddings.ndim == 1:
+                embeddings = embeddings.reshape(1, -1)
+            return embeddings.tolist()
+        except Exception as e:
+            logging.error(f"Error generating embeddings: {e}")
+            return [[0.0] * 384 for _ in input]
+
+class FixedMyVanna(ChromaDB_VectorStore, Ollama):
+    def __init__(self, config=None, reset_data=False):
+          # Set up the embedding function
+        self.multilingual_embedding = MultilingualEmbeddingFunction()
+
+        persist_dir = './vanna-multilingual-persistent'
+            
+        # Separate configs for each parent class
+        chroma_config = {
+            'persist_directory': persist_dir,
+            'embedding_function': self.multilingual_embedding  # Pass the instance directly
+        }
+
+        ollama_config = {
+            'model': 'mistral'
+        }
+
+        # Store config for reset operations
+        self.chroma_config = chroma_config
+        self.persist_dir = persist_dir
+        
+        # Initialize parent classes
+        try:
+            ChromaDB_VectorStore.__init__(self, config=chroma_config)
+            Ollama.__init__(self, config=ollama_config)
+            logging.info(f"✅ Initialized Vanna with multilingual embeddings at {persist_dir}")
+        except Exception as e:
+            logging.error(f"❌ Failed to initialize Vanna: {e}")
+        
         self.custom_oracle_prompt = ""
         
         # Similarity search thresholds
@@ -47,7 +89,7 @@ class MyVanna(ChromaDB_VectorStore, Ollama):
         """Get ChromaDB collections safely"""
         try:
             import chromadb
-            chroma_client = chromadb.PersistentClient(path='./vanna-data')
+            chroma_client = chromadb.PersistentClient(path='./vanna-multilingual-data')
             collections = chroma_client.list_collections()
             return chroma_client, collections
         except Exception as e:
@@ -244,17 +286,17 @@ class MyVanna(ChromaDB_VectorStore, Ollama):
         
         if show_all_types:
             # Get all types of content
-            all_results = self.search_similar_content_with_scores(question, content_type="all", n_results=15)
+            all_results = self.search_similar_content_with_scores(question, content_type="all", n_results=3) # Adjust n_results as needed was 15
             preview_results['all'] = all_results
             
-            print(f"\n🔍 ALL SIMILAR CONTENT (Top 15):")
+            print(f"\n🔍 ALL SIMILAR CONTENT (Top 3):")
             print(f"{'Type':<15} {'Score':<8} {'Content Preview'}")
             print("-" * 80)
             
             for content, score, metadata in all_results:
                 content_type = metadata.get('type', 'unknown')
                 preview = content.replace('\n', ' ')[:60] + "..." if len(content) > 60 else content
-                print(f"{content_type:<15} {score:<8.3f} {preview}")
+                print(f"{content_type:<3} {score:<8.3f} {preview}") # 
         
         # DDL Content
         ddl_results = self.get_related_ddl_with_similarity(question, n_results=7)
@@ -310,13 +352,13 @@ class MyVanna(ChromaDB_VectorStore, Ollama):
         context_parts = []
         
         # Get DDL/Schema information with similarity scores
-        # ddl_results = self.get_related_ddl_with_similarity(question, n_results=7)
-        # if ddl_results:
-        #     context_parts.append("=== DATABASE SCHEMA (DDL) ===")
-        #     for i, (ddl, score) in enumerate(ddl_results, 1):
-        #         context_parts.append(f"Schema {i} (Similarity: {score:.3f}):")
-        #         context_parts.append(ddl.strip())
-        #         context_parts.append("")
+        ddl_results = self.get_related_ddl_with_similarity(question, n_results=7)
+        if ddl_results:
+            context_parts.append("=== DATABASE SCHEMA (DDL) ===")
+            for i, (ddl, score) in enumerate(ddl_results, 1):
+                context_parts.append(f"Schema {i} (Similarity: {score:.3f}):")
+                context_parts.append(ddl.strip())
+                context_parts.append("")
         
         # Get similar questions/examples with similarity scores
         # similar_questions = self.get_similar_questions_with_similarity(question, n_results=5)
@@ -340,9 +382,9 @@ class MyVanna(ChromaDB_VectorStore, Ollama):
         # Add a detailed summary section
         if context_parts:
             summary_parts = []
-            # if ddl_results:
-            #     avg_ddl_score = sum(score for _, score in ddl_results) / len(ddl_results)
-            #     summary_parts.append(f"{len(ddl_results)} schema definitions (avg similarity: {avg_ddl_score:.3f})")
+            if ddl_results:
+                avg_ddl_score = sum(score for _, score in ddl_results) / len(ddl_results)
+                summary_parts.append(f"{len(ddl_results)} schema definitions (avg similarity: {avg_ddl_score:.3f})")
             # if similar_questions:
             #     avg_q_score = sum(score for _, _, score in similar_questions) / len(similar_questions)
             #     summary_parts.append(f"{len(similar_questions)} example queries (avg similarity: {avg_q_score:.3f})")
@@ -380,33 +422,10 @@ class MyVanna(ChromaDB_VectorStore, Ollama):
         if self.custom_oracle_prompt and rag_context:
             system_content = f"""{self.custom_oracle_prompt}
 
-{rag_context}
+                {rag_context}
+Task: Generate the SQL query that answers the user's question using the provided database schema and descriptions. Ensure the query is correct and adheres to Oracle SQL syntax. Provide only the SQL query as your response.
 
-IMPORTANT INSTRUCTIONS:
-1. Use ONLY the tables and columns shown in the schema definitions above
-2. Follow the patterns from the example queries provided (pay attention to similarity scores)
-3. Reference the documentation to understand what each table/column contains
-4. Generate clean Oracle SQL that matches the examples and schema
-5. Prioritize higher similarity scored examples and schema definitions
-6. If the question asks about data not covered in the schema, explain what's missing
-
-Using the above context and following Oracle SQL rules, generate a query for the question below."""
-            
-        elif self.custom_oracle_prompt:
-            system_content = self.custom_oracle_prompt
-        elif rag_context:
-            system_content = f"""You are an Oracle SQL expert. Use the following context to generate queries:
-
-{rag_context}
-
-Generate clean Oracle SQL queries following these rules:
-- Use ROWNUM for limiting rows instead of LIMIT
-- Use SYSDATE for current date
-- Use || for string concatenation
-- Only reference tables and columns that exist in the provided schema context
-- Follow the patterns shown in the example queries (prioritize higher similarity scores)"""
-        else:
-            system_content = "You are an Oracle SQL expert. Generate clean, executable Oracle SQL queries using proper Oracle syntax."
+            """
         
         messages = [
             {'role': 'system', 'content': system_content},
@@ -480,7 +499,7 @@ def test_enhanced_similarity_search():
     print("=== TESTING ENHANCED SIMILARITY SEARCH ===")
     
     # Initialize enhanced Vanna
-    vn_enhanced = MyVanna()
+    vn_enhanced = FixedMyVanna(reset_data=False)
     
     # Set similarity thresholds
     vn_enhanced.set_similarity_thresholds(
@@ -527,7 +546,7 @@ def demonstrate_similarity_thresholds():
     """Demonstrate how different similarity thresholds affect results"""
     print("=== SIMILARITY THRESHOLD DEMONSTRATION ===")
     
-    vn_demo = MyVanna()
+    vn_demo = FixedMyVanna()
     test_question = "show customer accounts"
     
     thresholds_to_test = [0.1, 0.3, 0.5, 0.7]
@@ -618,36 +637,14 @@ except Exception as e:
     logging.error(f"Failed to initialize Oracle client: {e}")
 
 # Initialize Vanna
-vn = MyVanna()
+vn = FixedMyVanna()
 
 # Set the enhanced Oracle SQL prompt that works with RAG
-oracle_prompt = """You are an expert SQL assistant writing SQL queries for an Oracle Database.
-You must follow Oracle SQL syntax strictly and only use tables that exist in the user's schema.
+oracle_prompt = """Instruction: You are an SQL expert specializing in Oracle databases. Based on the provided database schema and descriptions, generate an SQL query that directly answers the user's question. The query must be executable on an Oracle database and should be provided without any additional text or explanations.
 
-Before generating the query, use the provided context from the vector store to understand the available schema. Only reference tables and columns that are confirmed to exist in the schema based on the context provided.
+Database Schema and Descriptions:
 
-Oracle SQL rules to follow:
-- Use `ROWNUM` for limiting rows instead of `LIMIT` (e.g., `WHERE ROWNUM <= 10`).
-- Use `SYSDATE` for the current date.
-- Use `TO_DATE('YYYY-MM-DD', 'YYYY-MM-DD')` to parse dates.
-- For string concatenation, use `||` operator.
-- Avoid PostgreSQL/MySQL syntax like `LIMIT`, `ILIKE`, or `TRUE/FALSE` — these are not valid in Oracle.
-- Use `DUAL` for selecting constants (e.g., `SELECT 1 FROM DUAL`).
-- For pagination, use ROW_NUMBER() OVER() or ROWNUM with nested queries instead of OFFSET/FETCH.
-- Use Oracle's hierarchical query syntax with CONNECT BY and PRIOR for tree-structured data.
-- Remember that Oracle's NVL() is equivalent to COALESCE() in other dialects.
-- For date arithmetic, use date + number for days (e.g., SYSDATE + 7 for a week later).
-
-Important constraints:
-1. ONLY reference tables that exist in the schema retrieved from the vector store context.
-2. NEVER make up table names or columns that aren't confirmed in the retrieved schema.
-3. Use proper Oracle join syntax and appropriate table aliases if needed.
-4. Always use fully qualified column names in joins to avoid ambiguity.
-5. When no specific limit is requested, add WHERE ROWNUM <= 100 to prevent large result sets.
-
-Always output clean, runnable Oracle SQL with appropriate table and column references.
-Do not include ANY explanatory text before or after the SQL query - just return the SQL itself.
-Do not assume any table names or columns that are not explicitly mentioned in the schema retrieved from the vector store."""
+Below are the relevant table definitions and descriptions retrieved from the database schema:"""
 
 vn.set_custom_oracle_prompt(oracle_prompt)
 
@@ -730,7 +727,7 @@ def is_valid_sql(sql_query, valid_tables):
 
 def check_vector_store_status():
     """Enhanced check if the vector store has been populated with training data"""
-    if not os.path.exists('./vanna-data'):
+    if not os.path.exists('./vanna-multilingual-persistent'):
         return False, "Vanna data directory not found"
     
     try:
@@ -875,12 +872,12 @@ def detailed_vector_store_diagnosis():
     print("=== ENHANCED VECTOR STORE DIAGNOSIS ===")
     
     # Check directory structure
-    if os.path.exists('./vanna-data'):
+    if os.path.exists('./vanna-multilingual-persistent'):
         print("✅ vanna-data directory exists")
         
         # List all files
         all_files = []
-        for root, dirs, files in os.walk('./vanna-data'):
+        for root, dirs, files in os.walk('./vanna-multilingual-persistent'):
             for file in files:
                 filepath = os.path.join(root, file)
                 try:
@@ -1024,7 +1021,7 @@ def detailed_vector_store_diagnosis():
     print("\n--- Testing ChromaDB Direct Access ---")
     try:
         import chromadb
-        chroma_client = chromadb.PersistentClient(path='./vanna-data')
+        chroma_client = chromadb.PersistentClient(path='./vanna-multilingual-persistent')
         collections = chroma_client.list_collections()
         
         print(f"✅ ChromaDB: Found {len(collections)} collections")
@@ -1130,7 +1127,7 @@ def test_vector_store_from_flask():
     print("=== TESTING VECTOR STORE FROM FLASK APP ===")
     
     # Initialize the same way as in Flask app
-    vn_test = MyVanna()
+    vn_test = FixedMyVanna()
     
     # Try the same methods that work in your training script
     print("\n1. Testing get_training_data...")
