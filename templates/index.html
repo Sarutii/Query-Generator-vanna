@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>Yehia SQL Assistant</title>
+  <title>Oracle SQL Assistant</title>
   <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
   <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
   <style>
@@ -39,14 +39,14 @@
 
 <div class="container">
   <div class="d-flex justify-content-between align-items-center mb-4">
-    <h1>Yehia SQL Generator</h1>
+    <h1>Oracle SQL Generator</h1>
     <button id="toggleTheme" class="btn btn-outline-secondary">🌓 Toggle Theme</button>
   </div>
 
   <form id="ask-form" method="POST" class="mb-4">
     <div class="mb-3">
       <label for="question" class="form-label">Ask a question:</label>
-      <input type="text" class="form-control" id="question" name="question" placeholder="e.g. Show me top 5 customers by revenue">
+      <input type="text" class="form-control" id="question" name="question" placeholder="e.g. show problems in the maintenance order table">
     </div>
     <button type="submit" class="btn btn-primary">Generate SQL</button>
   </form>
@@ -73,6 +73,7 @@
   <div class="row-count" id="row-count"></div>
 </div>
 
+
 <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
 <script>
   document.getElementById('toggleTheme').addEventListener('click', async () => {
@@ -85,54 +86,72 @@
     const sql = document.getElementById("sql-result").value;
     document.getElementById("export-sql").value = sql;
 
-    const res = await fetch("/execute", {
-      method: "POST",
-      headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
-      body: new URLSearchParams({ sql })
-    });
-
-    const data = await res.json();
     const resultDiv = document.getElementById("execution-result");
     const tableDiv = document.getElementById("table-result");
     const rowCountDiv = document.getElementById("row-count");
 
-    resultDiv.classList.remove("d-none");
+    try {
+      const res = await fetch("/execute", {
+        method: "POST",
+        headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+        body: new URLSearchParams({ sql })
+      });
 
-    if (data.status === "success") {
-      resultDiv.className = "alert alert-success";
-      resultDiv.textContent = "Query executed successfully.";
+      const contentType = res.headers.get("content-type");
+      if (!contentType || !contentType.includes("application/json")) {
+        const html = await res.text();
+        throw new Error("Non-JSON response:\n" + html.substring(0, 200));
+      }
 
-      if (Array.isArray(data.data)) {
-        if (data.data.length === 0) {
-          tableDiv.innerHTML = '<div class="alert alert-info">No results returned.</div>';
-          rowCountDiv.textContent = '';
+      const data = await res.json();
+      console.log("Executed SQL:", sql);
+      console.log("Backend returned:", data);
+
+      resultDiv.classList.remove("d-none");
+
+      if (data.status === "success") {
+        resultDiv.className = "alert alert-success";
+        resultDiv.textContent = "Query executed successfully.";
+
+        if (Array.isArray(data.data)) {
+          if (data.data.length === 0) {
+            tableDiv.innerHTML = '<div class="alert alert-info">No results returned.</div>';
+            rowCountDiv.textContent = '';
+          } else {
+            const headers = Object.keys(data.data[0]);
+            let html = '<table class="table table-bordered table-striped"><thead><tr>';
+            headers.forEach(h => html += `<th>${h}</th>`);
+            html += '</tr></thead><tbody>';
+            data.data.forEach(row => {
+              html += '<tr>';
+              headers.forEach(h => html += `<td>${row[h]}</td>`);
+              html += '</tr>';
+            });
+            html += '</tbody></table>';
+            tableDiv.innerHTML = html;
+            rowCountDiv.textContent = `${data.data.length} row(s) extracted.`;
+          }
         } else {
-          const headers = Object.keys(data.data[0]);
-          let html = '<table class="table table-bordered table-striped"><thead><tr>';
-          headers.forEach(h => html += `<th>${h}</th>`);
-          html += '</tr></thead><tbody>';
-          data.data.forEach(row => {
-            html += '<tr>';
-            headers.forEach(h => html += `<td>${row[h]}</td>`);
-            html += '</tr>';
-          });
-          html += '</tbody></table>';
-          tableDiv.innerHTML = html;
-          rowCountDiv.textContent = `${data.data.length} row(s) extracted.`;
+          tableDiv.innerHTML = `<div class="alert alert-info">${data.data}</div>`;
+          rowCountDiv.textContent = '';
         }
       } else {
-        tableDiv.innerHTML = `<div class="alert alert-info">${data.data}</div>`;
+        resultDiv.className = "alert alert-danger";
+        resultDiv.textContent = data.message;
+        tableDiv.innerHTML = "";
         rowCountDiv.textContent = '';
       }
-    } else {
+    } catch (err) {
+      console.error("Request or response error:", err);
+      resultDiv.classList.remove("d-none");
       resultDiv.className = "alert alert-danger";
-      resultDiv.textContent = data.message;
+      resultDiv.textContent = "An error occurred: " + err.message;
       tableDiv.innerHTML = "";
       rowCountDiv.textContent = '';
     }
   }
 
-  document.getElementById('ask-form').addEventListener('submit', async function(e) {
+  document.getElementById('ask-form').addEventListener('submit', async function (e) {
     e.preventDefault();
     const question = document.getElementById('question').value;
     const response = await fetch('/ask', {
@@ -151,5 +170,6 @@
     }
   });
 </script>
+
 </body>
 </html>

@@ -11,6 +11,16 @@ import glob
 from chromadb.api.types import EmbeddingFunction
 from sentence_transformers import SentenceTransformer
 
+from vanna.openai.openai_chat import OpenAI_Chat
+from vanna.openai.openai_embeddings import OpenAI_Embeddings
+from vanna.chromadb.chromadb_vector import ChromaDB_VectorStore
+import openai
+import sys
+sys.stdout.reconfigure(encoding='utf-8')
+
+
+
+
 # Set up logging
 logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
 
@@ -33,7 +43,7 @@ class MultilingualEmbeddingFunction(EmbeddingFunction):
             return [[0.0] * 384 for _ in input]
 
 # FIXED: Use the same FixedMyVanna class from training script
-class FixedMyVanna(ChromaDB_VectorStore, Ollama):
+class FixedMyVanna(ChromaDB_VectorStore,  OpenAI_Chat):
     def __init__(self, config=None, reset_data=False):
         """
         Initialize Vanna with GUARANTEED vector store population
@@ -71,8 +81,21 @@ class FixedMyVanna(ChromaDB_VectorStore, Ollama):
         }
 
         ollama_config = {
-            'model': 'mistral'
+            'model': 'deepseek-r1:7b'
         }
+
+        openai_config = {
+            'api_key': '9f5a40e03421d80d5edd442a74be3b8beeceba8f0af00bbd486969633cc4cbc8',
+            'model': 'sqlcoder-7b-2'  # or any model like 'mistralai/Mixtral'
+        }
+
+        together_api_key = '9f5a40e03421d80d5edd442a74be3b8beeceba8f0af00bbd486969633cc4cbc8'
+        together_model = 'mistralai/Mistral-7B-Instruct-v0.2'
+
+        self.client = openai.OpenAI(
+            api_key=together_api_key,
+            base_url="https://api.together.xyz/v1"  # 👈 This is the key change
+        )
 
         # Store config for operations
         self.chroma_config = chroma_config
@@ -84,10 +107,16 @@ class FixedMyVanna(ChromaDB_VectorStore, Ollama):
             ChromaDB_VectorStore.__init__(self, config=chroma_config)
             logging.info("✅ ChromaDB_VectorStore initialized")
             
-            logging.info("🔧 Initializing Ollama...")
-            Ollama.__init__(self, config=ollama_config)
-            logging.info("✅ Ollama initialized")
-            
+            # logging.info("🔧 Initializing Ollama...")
+            # Ollama.__init__(self, config=ollama_config)
+            # logging.info("✅ Ollama initialized")
+            # logging.info("🔧 Initializing SqlCoder...")
+            # OpenAI.__init__(self, config=openai_config)
+            # logging.info("✅ SqlCoder initialized")
+
+            OpenAI_Chat.__init__(self, client=self.client, config={"model": together_model})
+            # OpenAI_Embeddings.__init__(self, client=self.client, config={"model": "togethercomputer/m2-bert-80M-32k"})
+
         except Exception as e:
             logging.error(f"❌ Failed to initialize Vanna: {e}")
             raise
